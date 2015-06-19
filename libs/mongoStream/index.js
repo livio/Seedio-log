@@ -5,7 +5,7 @@
 var MongoStream = function(options) {
   if(!options) { options = {}}
   if(!options.mongoose) {
-    throw new error ('A mongoose instance must be supplied in the options');
+    throw new Error ('A mongoose instance must be supplied in the options');
   }
 
   this.mongoose = options.mongoose;
