@@ -1,5 +1,4 @@
-var util = require('util'),
-    bunyan = require('bunyan'),
+var bunyan = require('bunyan'),
     MongoStream = require('./libs/mongoStream'),
     PrettySteam = require('./libs/prettyStream');
 

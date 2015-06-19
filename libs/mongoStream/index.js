@@ -8,8 +8,11 @@ var mongoose = require('mongoose');
  * ******************** Constructor
  * ************************************************** */
 
-var MongoStream = function(filter) {
-  this.filter = filter;
+var MongoStream = function(options) {
+  if(!options) { options = {}}
+  this.collectionName = options.collectionName || 'Log';
+  initCollection(this.collectionName);
+  this.filter = options.filter;
   this.writable = true;
 };
 
@@ -24,43 +27,66 @@ var MongoStream = function(filter) {
 MongoStream.prototype.write = function(obj) {
   // Only log if mongoose is connected.
   if(mongoose.connection.readyState) {
-    var Log = mongoose.model('Log');
+    var Log = mongoose.model(this.getCollectionName());
     if(this.filter) {
         this.filter(obj, function(err, filteredObj) {
           if(err) {
             console.log('Failed to filter obj for logging to MongoDB.', err);
           } else {
-            Log.record(filteredObj)
+            new Log(filteredObj).save(function(err) {
+              if(err) {
+                console.log('Failed record log in mongoose.\n%s', err)
+              }
+            });
           }
         });
     } else {
-      Log.record(obj);
+      new Log(obj).save(function(err) {
+        if(err) {
+          console.log('Failed record log in mongoose.\n%s', err)
+        }
+      });
     }
   }
 };
 
+MongoStream.prototype.getCollectionName = function() {
+  return this.collectionName;
+};
+
 /**
- * Filters secret information from being logged.
+ * Filters secret information from a requests body from being logged.
+ * @param {Array} propertyNames is an array of strings that contains the property names to be filtered.
  * @param {object} obj - Object that needs to be filtered.
  * @param callback - Async callback.
  * @returns {*}
  */
-MongoStream.passwordFilter = function(obj, callback) {
+MongoStream.propertyFilter = function(propertyNames, obj, callback) {
   // If the record stores the body of a request. We need to filter any passwords.
   if(obj.body) {
-    var filters = ['password', 'pass', 'security', 'securityAnswer'];
-    for(var prop in obj.body) {
-      if(obj.body.hasOwnProperty(prop)) {
-        if(filters.indexOf(prop.toLowerCase()) > -1) {
+    for (var prop in obj.body) {
+      if (obj.body.hasOwnProperty(prop)) {
+        if (propertyNames.indexOf(prop.toLowerCase()) > -1) {
           obj.body[prop] = '*'
         }
       }
     }
-    return callback(undefined, obj);
-  } else {
-    return callback(undefined, obj);
   }
+
+  return callback(undefined, obj);
 };
+
+/* ************************************************** *
+ * ******************** Helper Functions
+ * ************************************************** */
+
+/**
+ * Initializes the mongoose collection that will be used for logging.
+ * @param {string} collectionName The name of the mongoose collection.
+ */
+function initCollection(collectionName) {
+  mongoose.model(collectionName, new mongoose.Schema({}, {strict: false}));
+}
 
 /* ************************************************** *
  * ******************** Exports
