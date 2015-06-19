@@ -1,19 +1,19 @@
 /* ************************************************** *
- * ******************** Sends raw bunyan input into a MongoDB.
- * ************************************************** */
-
-var mongoose = require('mongoose');
-
-/* ************************************************** *
  * ******************** Constructor
  * ************************************************** */
 
 var MongoStream = function(options) {
   if(!options) { options = {}}
+  if(!options.mongoose) {
+    throw new error ('A mongoose instance must be supplied in the options');
+  }
+
+  this.mongoose = options.mongoose;
   this.collectionName = options.collectionName || 'Log';
-  initCollection(this.collectionName);
   this.filter = options.filter;
   this.writable = true;
+
+  init(this.mongoose, this.collectionName);
 };
 
 /* ************************************************** *
@@ -26,20 +26,20 @@ var MongoStream = function(options) {
  */
 MongoStream.prototype.write = function(obj) {
   // Only log if mongoose is connected.
-  if(mongoose.connection.readyState) {
-    var Log = mongoose.model(this.getCollectionName());
+  if(this.mongoose.connection.readyState) {
+    var Log = this.mongoose.model(this.getCollectionName());
     if(this.filter) {
-        this.filter(obj, function(err, filteredObj) {
-          if(err) {
-            console.log('Failed to filter obj for logging to MongoDB.', err);
-          } else {
-            new Log(filteredObj).save(function(err) {
-              if(err) {
-                console.log('Failed record log in mongoose.\n%s', err)
-              }
-            });
-          }
-        });
+      this.filter(obj, function(err, filteredObj) {
+        if(err) {
+          console.log('Failed to filter obj for logging to MongoDB.', err);
+        } else {
+          new Log(filteredObj).save(function(err) {
+            if(err) {
+              console.log('Failed record log in mongoose.\n%s', err)
+            }
+          });
+        }
+      });
     } else {
       new Log(obj).save(function(err) {
         if(err) {
@@ -47,6 +47,8 @@ MongoStream.prototype.write = function(obj) {
         }
       });
     }
+  } else {
+    console.log('Failed to record log to Database because the MongoDB connection is not in the ready state.');
   }
 };
 
@@ -77,20 +79,27 @@ MongoStream.propertyFilter = function(propertyNames, obj, callback) {
 };
 
 /* ************************************************** *
- * ******************** Helper Functions
+ * ******************** Private functions
  * ************************************************** */
 
 /**
- * Initializes the mongoose collection that will be used for logging.
- * @param {string} collectionName The name of the mongoose collection.
+ * Init the mongoose collection.
+ * @param mongoose is an instance of mongoose.
+ * @param {string} collectionName is the name of the collection that will be used in MongoDB
  */
-function initCollection(collectionName) {
-  mongoose.model(collectionName, new mongoose.Schema({}, {strict: false}));
+function init(mongoose, collectionName) {
+  if(!mongoose || !collectionName) {
+    throw new Error('An instance of mongoose and a collectionName is required to initialize the collection');
+  }
+
+  // Make sure the schema does not already exists otherwise we will get an exception.
+  if(!mongoose.modelSchemas[collectionName]) {
+    mongoose.model(collectionName, new mongoose.Schema({}, {strict: false}));
+  }
 }
 
 /* ************************************************** *
  * ******************** Exports
  * ************************************************** */
 
-exports = module.exports = MongoStream;
-exports = MongoStream;
+module.exports = MongoStream;

@@ -1,13 +1,16 @@
-var bunyan = require('bunyan'),
-    MongoStream = require('./libs/mongoStream'),
-    PrettySteam = require('./libs/prettyStream');
-
 /* ************************************************** *
  * ******************** Constructor
  * ************************************************** */
 
 var Log = function (options) {
+  var bunyan = require('bunyan'),
+      MongoStream = require('./libs/mongoStream'),
+      PrettySteam = require('./libs/prettyStream');
+
   if(!options) { options = {} }
+  if(!options.mongoose) {
+    throw new Error('An instance of mongoose is required to enabled database logging')
+  }
 
   this.debug = options.debug || true;
   this.trace = options.trace || false;
@@ -25,9 +28,9 @@ var Log = function (options) {
       {
         type: 'raw',
         level: 'trace',
-        stream: new MongoStream()
+        stream: new MongoStream({mongoose: options.mongoose})
       }
-  ]});
+    ]});
   this.requestLog = require('express-bunyan-logger')({
     name: this.name + ' Requests',
     serializers: bunyan.stdSerializers,
@@ -40,7 +43,7 @@ var Log = function (options) {
       {
         type: 'raw',
         level: 'info',
-        stream: new MongoStream(MongoStream.passwordFilter)
+        stream: new MongoStream({mongoose: options.mongoose})
       }
     ]});
 };
@@ -85,5 +88,4 @@ Log.prototype.w = function() {
  * ******************** Exports
  * ************************************************** */
 
-exports = module.exports = Log;
-exports = Log;
+module.exports = Log;
