@@ -9,11 +9,11 @@ var Log = function (options) {
 
   if(!options) { options = {} }
 
-  this.debug = options.debug || true;
-  this.trace = options.trace || false;
-  this.error = options.error || true;
-  this.name = options.name || 'Log';
-  this.databaseLog = options.databaseLog || false;
+  this.debug = getDefaultValue(options.debug, true);
+  this.trace = getDefaultValue(options.trace, false);
+  this.error = getDefaultValue(options.error, true);
+  this.name = getDefaultValue(options.name, 'Log');
+  this.databaseLog = getDefaultValue(options.databaseLog, false);
 
   var loggingStreams = [
     {
@@ -80,6 +80,14 @@ Log.prototype.w = function() {
     this.log.warn.apply(this.log, arguments);
   }
 };
+
+/* ************************************************** *
+ * ******************** Helper Functions
+ * ************************************************** */
+
+function getDefaultValue(obj, objectDefault) {
+  return (obj === undefined || obj === null) ? objectDefault : obj
+}
 
 /* ************************************************** *
  * ******************** Exports
